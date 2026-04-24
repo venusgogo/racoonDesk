@@ -26,10 +26,10 @@ except ImportError:
 
 # ── 페이지 설정 ──────────────────────────────────────────────
 st.set_page_config(
-    page_title="RACOON — HR 규정 도우미",
+    page_title="RACOON Desk",
     page_icon="🦝",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 # ── CSS 로드 ─────────────────────────────────────────────────
@@ -42,7 +42,7 @@ if os.path.exists(css_path):
 st.markdown("""
 <div class="racoon-header">
   <div>
-    <h1>🦝 RACOON</h1>
+    <h1>🦝 RACOON Desk</h1>
     <p>인사관리 규정 AI 질의응답 시스템</p>
   </div>
 </div>
@@ -71,13 +71,13 @@ with st.sidebar:
                     build_vectorstore(chunks)
                 st.success("완료!")
     else:
-        st.warning("Role B RAG 모듈을 찾을 수 없습니다.\nrole-b 패키지를 먼저 설치하세요.")
+        st.warning("Role B RAG 모듈을 찾을 수 없습니다.")
 
     st.divider()
     st.markdown("### 피드백 현황")
     render_feedback_summary()
     st.divider()
-    st.caption("RACOON v1.0 · Role C UX")
+    st.caption("RACOON Desk v1.0 · Role C UX")
 
 # ── 페이지 라우팅 ──────────────────────────────────────────────
 if page == "📖 사용 가이드":
@@ -88,27 +88,25 @@ elif page == "📊 사용 현황":
 
 else:
     # ── 질의응답 ─────────────────────────────────────────────
+
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
-    # 대화 히스토리 출력
-    for msg in st.session_state.messages:
-        if msg["role"] == "user":
-            st.markdown(f'<div class="chat-user">{msg["content"]}</div>', unsafe_allow_html=True)
-        else:
-            st.markdown(f'<div class="chat-assistant">{msg["content"]}</div>', unsafe_allow_html=True)
-            if msg.get("articles"):
-                badges = " ".join(
-                    f'<span class="article-badge">📌 {a}</span>'
-                    for a in msg["articles"]
-                )
-                st.markdown(badges, unsafe_allow_html=True)
-            render_feedback_widget(msg.get("question", ""), msg["content"])
+    # ── 입력창 (헤더 바로 아래) ───────────────────────────────
+    with st.form(key="query_form", clear_on_submit=True):
+        col_input, col_btn = st.columns([5, 1])
+        with col_input:
+            prompt = st.text_input(
+                "질문 입력",
+                placeholder="예: 연차 유급휴가는 며칠인가요?",
+                label_visibility="collapsed",
+            )
+        with col_btn:
+            submitted = st.form_submit_button("전송 →", use_container_width=True, type="primary")
 
-    # 입력창
-    if prompt := st.chat_input("인사관리 규정에 대해 질문하세요..."):
+    # ── 답변 처리 ─────────────────────────────────────────────
+    if submitted and prompt.strip():
         st.session_state.messages.append({"role": "user", "content": prompt})
-        st.markdown(f'<div class="chat-user">{prompt}</div>', unsafe_allow_html=True)
 
         with st.spinner("규정을 검토하는 중..."):
             if not RAG_AVAILABLE:
@@ -140,15 +138,29 @@ else:
                     answer = f"오류가 발생했습니다: {e}"
                     articles = []
 
-        st.markdown(f'<div class="chat-assistant">{answer}</div>', unsafe_allow_html=True)
-        if articles:
-            badges = " ".join(f'<span class="article-badge">📌 {a}</span>' for a in articles)
-            st.markdown(badges, unsafe_allow_html=True)
-
         st.session_state.messages.append({
             "role": "assistant",
             "content": answer,
             "articles": articles,
             "question": prompt,
         })
-        render_feedback_widget(prompt, answer)
+
+    # ── 대화 히스토리 (최신순) ────────────────────────────────
+    for msg in reversed(st.session_state.messages):
+        if msg["role"] == "user":
+            st.markdown(
+                f'<div class="chat-user">{msg["content"]}</div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                f'<div class="chat-assistant">{msg["content"]}</div>',
+                unsafe_allow_html=True,
+            )
+            if msg.get("articles"):
+                badges = " ".join(
+                    f'<span class="article-badge">📌 {a}</span>'
+                    for a in msg["articles"]
+                )
+                st.markdown(badges, unsafe_allow_html=True)
+            render_feedback_widget(msg.get("question", ""), msg["content"])

@@ -161,11 +161,33 @@ section[data-testid="stSidebar"] * {
     flex-shrink: 0;
 }
 
-/* 입력창 */
-.stChatInput textarea {
-    border-radius: 24px !important;
-    border-color: var(--racoon-border) !important;
+/* 입력창 — form text_input */
+div[data-testid="stTextInput"] input {
+    background-color: #FFFFFF !important;
+    color: #1C1C1E !important;
+    border: 2px solid var(--racoon-brown) !important;
+    border-radius: 10px !important;
+    font-size: 1rem !important;
+    padding: 0.65rem 1rem !important;
     font-family: 'Noto Sans KR', sans-serif !important;
+    caret-color: var(--racoon-brown) !important;
+}
+
+div[data-testid="stTextInput"] input::placeholder {
+    color: #9E9E9E !important;
+}
+
+div[data-testid="stTextInput"] input:focus {
+    border-color: var(--racoon-accent) !important;
+    box-shadow: 0 0 0 3px rgba(107,79,58,0.15) !important;
+}
+
+/* form 여백 최소화 */
+div[data-testid="stForm"] {
+    border: none !important;
+    padding: 0 !important;
+    background: transparent !important;
+    margin-bottom: 1rem;
 }
 
 /* 버튼 */
