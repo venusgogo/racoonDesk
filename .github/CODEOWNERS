@@ -1,0 +1,20 @@
+# RACOON — 폴더별 코드 오너 설정
+# PR에 해당 폴더 변경이 포함되면 지정된 오너의 approve가 필수입니다.
+# GitHub 계정명(@username)을 실제 팀원 계정으로 교체하세요.
+
+# 전체 저장소 기본 오너 (위 규칙에 해당 없을 때 적용)
+*   @manager-user
+
+# Role A — 데이터 정제 & 도메인 전문가 (Gemini 담당자)
+/role-a/   @gemini-user
+
+# Role B — RAG 시스템 & 파이프라인 개발자 (Claude 담당자)
+/role-b/   @claude-user
+
+# Role C — 서비스 기획 & UX 관리자 (통합 관리자)
+/role-c/   @manager-user
+
+# 공통 설정 파일은 통합 관리자가 오너
+/.github/   @manager-user
+README.md   @manager-user
+.gitignore  @manager-user
