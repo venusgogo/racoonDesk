@@ -1,51 +1,86 @@
-import os
-from typing import List, Dict
+from typing import Optional
 import anthropic
 
-from config.settings import LLM_MODEL, LLM_MAX_TOKENS, LLM_TEMPERATURE
+from config.settings import ANTHROPIC_API_KEY, CLAUDE_MODEL, MAX_TOKENS
+from rag.retriever import SearchResult
 
 
-client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+SYSTEM_PROMPT = """당신은 회사 인사규정 전문 어시스턴트입니다.
+주어진 인사규정 조항들을 바탕으로 질문에 정확하고 친절하게 답변합니다.
 
-SYSTEM_PROMPT = """당신은 회사 인사관리 규정 전문 AI 어시스턴트입니다.
-
-규칙:
-1. 반드시 제공된 규정 문서의 내용만을 근거로 답변하세요.
-2. 답변 마지막에 반드시 근거 조항을 명시하세요.
-3. 규정에 없는 내용은 추측하거나 생성하지 마세요.
-4. 규정에 없는 질문은 "해당 내용은 인사관리 규정에 명시되어 있지 않습니다. 인사팀에 문의하시기 바랍니다."라고 답하세요.
-
-답변 형식:
-[답변 내용]
-
-📌 근거: [조항 번호]"""
+답변 규칙:
+1. 반드시 제공된 조항 내용만을 근거로 답변하세요.
+2. 답변 말미에 근거 조항을 "[근거: 제X조 (조항명)]" 형식으로 명시하세요.
+3. 여러 조항이 근거인 경우 모두 나열하세요.
+4. 제공된 조항에서 답을 찾을 수 없으면 "제공된 규정에서 해당 내용을 찾을 수 없습니다."라고 답하세요.
+5. 불확실한 내용은 추측하지 말고 규정 내용만 전달하세요."""
 
 
-def generate_answer(query: str, retrieved_chunks: List[Dict]) -> Dict:
-    """검색된 조항을 바탕으로 답변을 생성합니다."""
-    context = "\n\n---\n\n".join([chunk["content"] for chunk in retrieved_chunks])
-    articles = [chunk["article"] for chunk in retrieved_chunks if chunk.get("article")]
+def _build_context(results: list[SearchResult]) -> str:
+    if not results:
+        return "관련 조항을 찾지 못했습니다."
 
-    user_message = f"""다음은 인사관리 규정의 관련 조항입니다:
+    lines = ["[관련 인사규정 조항]"]
+    for r in results:
+        article = r.chunk.metadata.get("article", "미상")
+        lines.append(f"\n--- {article} (유사도: {r.score:.2f}) ---")
+        lines.append(r.chunk.text.strip())
 
-{context}
+    return "\n".join(lines)
 
-질문: {query}
 
-위 규정을 바탕으로 정확하게 답변해주세요."""
+class Generator:
+    def __init__(
+        self,
+        model: str = CLAUDE_MODEL,
+        max_tokens: int = MAX_TOKENS,
+        api_key: Optional[str] = None,
+    ):
+        self.model = model
+        self.max_tokens = max_tokens
+        self.client = anthropic.Anthropic(api_key=api_key or ANTHROPIC_API_KEY)
 
-    response = client.messages.create(
-        model=LLM_MODEL,
-        max_tokens=LLM_MAX_TOKENS,
-        temperature=LLM_TEMPERATURE,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": user_message}],
-    )
+    def generate(
+        self,
+        query: str,
+        search_results: list[SearchResult],
+        stream: bool = False,
+    ) -> str:
+        context = _build_context(search_results)
+        user_message = f"{context}\n\n[질문]\n{query}"
 
-    answer_text = response.content[0].text
+        if stream:
+            return self._stream(user_message)
+        return self._invoke(user_message)
 
-    return {
-        "answer": answer_text,
-        "source_articles": articles,
-        "retrieved_chunks": retrieved_chunks,
-    }
+    def _invoke(self, user_message: str) -> str:
+        response = self.client.messages.create(
+            model=self.model,
+            max_tokens=self.max_tokens,
+            system=SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": user_message}],
+        )
+        return response.content[0].text
+
+    def _stream(self, user_message: str):
+        """스트리밍 제너레이터를 반환합니다 (Streamlit st.write_stream 호환)."""
+        with self.client.messages.stream(
+            model=self.model,
+            max_tokens=self.max_tokens,
+            system=SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": user_message}],
+        ) as stream:
+            for text in stream.text_stream:
+                yield text
+
+    def extract_cited_articles(self, answer: str) -> list[str]:
+        """답변 텍스트에서 '[근거: ...]' 패턴의 조항 번호를 추출합니다."""
+        import re
+        pattern = re.compile(r"\[근거:\s*([^\]]+)\]")
+        matches = pattern.findall(answer)
+        articles: list[str] = []
+        for match in matches:
+            # 쉼표로 구분된 복수 조항 분리
+            parts = [p.strip() for p in match.split(",")]
+            articles.extend(parts)
+        return articles
