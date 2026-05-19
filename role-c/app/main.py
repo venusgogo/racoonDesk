@@ -13,15 +13,15 @@ from ui.components.feedback_widget import render_feedback_widget, render_feedbac
 from ui.components.metrics_dashboard import render_dashboard, log_query
 from ui.components.onboarding import render_onboarding
 
-# Role B RAG 엔진 연결
+# Role B RAG 엔진 연결 (새 클래스 기반 API)
 try:
-    from role_b.rag.loader import load_markdown, chunk_by_article
-    from role_b.rag.embedder import build_vectorstore, load_vectorstore
-    from role_b.rag.retriever import retrieve
-    from role_b.rag.generator import generate_answer
-    from role_b.config.settings import VECTORSTORE_DIR
+    sys.path.insert(0, os.path.join(REPO_ROOT, "role-b"))
+    from rag.loader import DocumentLoader
+    from rag.embedder import Embedder
+    from rag.retriever import Retriever
+    from rag.generator import Generator
     RAG_AVAILABLE = True
-except ImportError:
+except Exception:
     RAG_AVAILABLE = False
 
 # ── 페이지 설정 ──────────────────────────────────────────────
@@ -37,6 +37,16 @@ css_path = os.path.join(os.path.dirname(__file__), "../ui/styles/racoon_theme.cs
 if os.path.exists(css_path):
     with open(css_path, encoding="utf-8") as f:
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
+# ── RAG 컴포넌트 캐싱 ─────────────────────────────────────────
+@st.cache_resource
+def get_rag_components():
+    embedder  = Embedder()
+    retriever = Retriever(embedder=embedder)
+    generator = Generator()
+    loader    = DocumentLoader()
+    retriever.load()
+    return loader, retriever, generator
 
 # ── 헤더 ─────────────────────────────────────────────────────
 st.markdown("""
@@ -61,17 +71,30 @@ with st.sidebar:
 
     if RAG_AVAILABLE:
         st.markdown("### 규정 파일 관리")
-        uploaded = st.file_uploader("Markdown 파일 업로드", type=["md", "txt"])
+        uploaded = st.file_uploader(
+            "파일 업로드 (MD / TXT / PDF / DOCX)",
+            type=["md", "txt", "pdf", "docx"],
+        )
         if uploaded:
-            content = uploaded.read().decode("utf-8")
-            chunks = chunk_by_article(content)
+            import tempfile, pathlib
+            suffix = pathlib.Path(uploaded.name).suffix
+            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+                tmp.write(uploaded.read())
+                tmp_path = tmp.name
+
+            _, retriever, _ = get_rag_components()
+            loader = DocumentLoader()
+            chunks = loader.load(tmp_path)
             st.info(f"조항 {len(chunks)}개 감지됨")
+
             if st.button("⚙️ 인덱스 구축", type="primary", use_container_width=True):
                 with st.spinner("학습 중..."):
-                    build_vectorstore(chunks)
+                    retriever.build_index(chunks)
+                    retriever.save()
+                    st.cache_resource.clear()
                 st.success("완료!")
     else:
-        st.warning("Role B RAG 모듈을 찾을 수 없습니다.")
+        st.warning("RAG 모듈을 불러올 수 없습니다.\nAPI 키와 패키지를 확인하세요.")
 
     st.divider()
     st.markdown("### 피드백 현황")
@@ -110,37 +133,38 @@ else:
 
         with st.spinner("규정을 검토하는 중..."):
             if not RAG_AVAILABLE:
-                answer = "RAG 모듈이 연결되지 않았습니다. role-b 패키지를 설치해 주세요."
+                answer   = "RAG 모듈이 연결되지 않았습니다. API 키와 패키지를 확인해 주세요."
                 articles = []
             else:
                 try:
-                    t0 = time.time()
-                    index, chunks = load_vectorstore(VECTORSTORE_DIR)
-                    retrieved = retrieve(prompt, index, chunks)
-                    result = generate_answer(prompt, retrieved)
-                    elapsed_ms = (time.time() - t0) * 1000
+                    _, retriever, generator = get_rag_components()
 
-                    answer = result["answer"]
-                    articles = result["source_articles"]
-                    log_query(prompt, articles, elapsed_ms)
+                    if not retriever.is_ready:
+                        answer   = "먼저 사이드바에서 규정 파일을 업로드하고 인덱스를 구축해 주세요."
+                        articles = []
+                    else:
+                        t0       = time.time()
+                        results  = retriever.search(prompt)
+                        answer   = generator.generate(prompt, results)
+                        articles = generator.extract_cited_articles(answer)
+                        log_query(prompt, articles, (time.time() - t0) * 1000)
 
-                    with st.expander("📄 참조된 조항 원문"):
-                        for chunk in result["retrieved_chunks"]:
-                            st.markdown(f"**{chunk['article']}**")
-                            preview = chunk["content"][:400]
-                            st.text(preview + ("..." if len(chunk["content"]) > 400 else ""))
-                            st.divider()
+                        if results:
+                            with st.expander("📄 참조된 조항 원문"):
+                                for r in results:
+                                    article = r.chunk.metadata.get("article", "")
+                                    st.markdown(f"**{article}** (유사도: {r.score:.2f})")
+                                    preview = r.chunk.text[:400]
+                                    st.text(preview + ("..." if len(r.chunk.text) > 400 else ""))
+                                    st.divider()
 
-                except FileNotFoundError:
-                    answer = "먼저 사이드바에서 규정 파일을 업로드하고 인덱스를 구축해 주세요."
-                    articles = []
                 except Exception as e:
-                    answer = f"오류가 발생했습니다: {e}"
+                    answer   = f"오류가 발생했습니다: {e}"
                     articles = []
 
         st.session_state.messages.append({
-            "role": "assistant",
-            "content": answer,
+            "role":     "assistant",
+            "content":  answer,
             "articles": articles,
             "question": prompt,
         })
