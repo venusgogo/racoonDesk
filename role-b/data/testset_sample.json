@@ -1,0 +1,27 @@
+[
+  {
+    "question": "연차 유급휴가는 며칠 부여되나요?",
+    "expected_articles": ["제60조"],
+    "expected_keywords": ["연차", "15일", "유급"]
+  },
+  {
+    "question": "육아휴직 신청 기간과 조건은 무엇인가요?",
+    "expected_articles": ["제19조"],
+    "expected_keywords": ["육아휴직", "만 8세", "신청"]
+  },
+  {
+    "question": "퇴직금 산정 기준은 어떻게 되나요?",
+    "expected_articles": ["제34조"],
+    "expected_keywords": ["퇴직금", "평균임금", "30일"]
+  },
+  {
+    "question": "징계의 종류에는 무엇이 있나요?",
+    "expected_articles": ["제50조"],
+    "expected_keywords": ["견책", "감봉", "정직", "해고"]
+  },
+  {
+    "question": "채용 시 제출 서류는 무엇인가요?",
+    "expected_articles": ["제5조"],
+    "expected_keywords": ["이력서", "졸업증명서", "주민등록등본"]
+  }
+]
