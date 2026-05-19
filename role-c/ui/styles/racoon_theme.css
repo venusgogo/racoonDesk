@@ -1,0 +1,204 @@
+/* RACOON Custom Theme */
+
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap');
+
+:root {
+    --racoon-brown:    #6B4F3A;
+    --racoon-dark:     #1C1C1E;
+    --racoon-accent:   #E8A87C;
+    --racoon-bg:       #F7F4F0;
+    --racoon-surface:  #FFFFFF;
+    --racoon-green:    #2E7D32;
+    --racoon-blue:     #1E3A5F;
+    --racoon-error:    #C62828;
+    --racoon-border:   #DDD8D3;
+    --racoon-muted:    #8A8480;
+}
+
+/* 전체 폰트 */
+html, body, [class*="css"] {
+    font-family: 'Noto Sans KR', sans-serif !important;
+}
+
+/* 앱 배경 */
+.stApp {
+    background-color: var(--racoon-bg);
+}
+
+/* 헤더 */
+.racoon-header {
+    background: linear-gradient(135deg, var(--racoon-brown) 0%, var(--racoon-dark) 100%);
+    padding: 1.5rem 2rem;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.racoon-header h1 {
+    color: #FFFFFF;
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: -0.5px;
+}
+
+.racoon-header p {
+    color: var(--racoon-accent);
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+/* 채팅 메시지 — 사용자 */
+.chat-user {
+    background: var(--racoon-blue);
+    color: #FFFFFF;
+    padding: 0.85rem 1.1rem;
+    border-radius: 18px 18px 4px 18px;
+    margin: 0.5rem 0 0.5rem 3rem;
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+/* 채팅 메시지 — AI */
+.chat-assistant {
+    background: var(--racoon-surface);
+    color: var(--racoon-dark);
+    padding: 0.85rem 1.1rem;
+    border-radius: 18px 18px 18px 4px;
+    margin: 0.5rem 3rem 0.5rem 0;
+    border: 1px solid var(--racoon-border);
+    font-size: 0.95rem;
+    line-height: 1.6;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+/* 근거 조항 뱃지 */
+.article-badge {
+    display: inline-block;
+    background: var(--racoon-green);
+    color: #FFFFFF;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0.2rem 0.65rem;
+    border-radius: 20px;
+    margin: 0.2rem 0.2rem 0 0;
+}
+
+/* 카드 컨테이너 */
+.racoon-card {
+    background: var(--racoon-surface);
+    border: 1px solid var(--racoon-border);
+    border-radius: 10px;
+    padding: 1.2rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+
+/* 사이드바 */
+section[data-testid="stSidebar"] {
+    background-color: #2B2320 !important;
+}
+
+section[data-testid="stSidebar"] * {
+    color: #F0EAE4 !important;
+}
+
+/* 업로드 버튼 */
+.stFileUploader label {
+    color: var(--racoon-accent) !important;
+}
+
+/* 메트릭 카드 */
+.metric-card {
+    background: var(--racoon-surface);
+    border-left: 4px solid var(--racoon-brown);
+    padding: 1rem 1.2rem;
+    border-radius: 0 8px 8px 0;
+    margin-bottom: 0.8rem;
+}
+
+.metric-card .metric-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--racoon-brown);
+}
+
+.metric-card .metric-label {
+    font-size: 0.82rem;
+    color: var(--racoon-muted);
+    margin-top: 0.2rem;
+}
+
+/* 피드백 별점 */
+.star-rating {
+    font-size: 1.4rem;
+    cursor: pointer;
+    color: var(--racoon-accent);
+}
+
+/* 온보딩 스텝 */
+.onboarding-step {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    padding: 0.8rem 0;
+    border-bottom: 1px solid var(--racoon-border);
+}
+
+.step-number {
+    background: var(--racoon-brown);
+    color: #FFF;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+/* 입력창 — form text_input */
+div[data-testid="stTextInput"] input {
+    background-color: #FFFFFF !important;
+    color: #1C1C1E !important;
+    border: 2px solid var(--racoon-brown) !important;
+    border-radius: 10px !important;
+    font-size: 1rem !important;
+    padding: 0.65rem 1rem !important;
+    font-family: 'Noto Sans KR', sans-serif !important;
+    caret-color: var(--racoon-brown) !important;
+}
+
+div[data-testid="stTextInput"] input::placeholder {
+    color: #9E9E9E !important;
+}
+
+div[data-testid="stTextInput"] input:focus {
+    border-color: var(--racoon-accent) !important;
+    box-shadow: 0 0 0 3px rgba(107,79,58,0.15) !important;
+}
+
+/* form 여백 최소화 */
+div[data-testid="stForm"] {
+    border: none !important;
+    padding: 0 !important;
+    background: transparent !important;
+    margin-bottom: 1rem;
+}
+
+/* 버튼 */
+.stButton > button[kind="primary"] {
+    background: var(--racoon-brown) !important;
+    border: none !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+}
+
+.stButton > button[kind="primary"]:hover {
+    background: var(--racoon-accent) !important;
+    color: var(--racoon-dark) !important;
+}

@@ -17,6 +17,15 @@ TOP_K = 5  # 검색할 유사 청크 수
 DATA_DIR = os.path.join(os.path.dirname(__file__), "../../role-a/data/processed")
 VECTORSTORE_DIR = os.path.join(os.path.dirname(__file__), "../rag/vectorstore")
 
-# API 키 (환경변수로 관리)
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+# API 키 — 환경변수 우선, 없으면 Streamlit secrets fallback
+def _get_secret(key: str) -> str:
+    if val := os.environ.get(key):
+        return val
+    try:
+        import streamlit as st
+        return st.secrets.get(key, "")
+    except Exception:
+        return ""
+
+ANTHROPIC_API_KEY = _get_secret("ANTHROPIC_API_KEY")
+OPENAI_API_KEY    = _get_secret("OPENAI_API_KEY")
