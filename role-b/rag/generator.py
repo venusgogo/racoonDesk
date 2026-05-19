@@ -38,7 +38,13 @@ class Generator:
     ):
         self.model = model
         self.max_tokens = max_tokens
-        self.client = anthropic.Anthropic(api_key=api_key or ANTHROPIC_API_KEY)
+        key = api_key or ANTHROPIC_API_KEY
+        if not key:
+            raise EnvironmentError(
+                "ANTHROPIC_API_KEY가 설정되지 않았습니다. "
+                "Streamlit Cloud → App settings → Secrets에 ANTHROPIC_API_KEY를 추가하세요."
+            )
+        self.client = anthropic.Anthropic(api_key=key)
 
     def generate(
         self,

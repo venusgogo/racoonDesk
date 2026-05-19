@@ -10,7 +10,13 @@ from rag.loader import Chunk
 class Embedder:
     def __init__(self, model: str = EMBEDDING_MODEL, api_key: Optional[str] = None):
         self.model = model
-        self.client = OpenAI(api_key=api_key or OPENAI_API_KEY)
+        key = api_key or OPENAI_API_KEY
+        if not key:
+            raise EnvironmentError(
+                "OPENAI_API_KEY가 설정되지 않았습니다. "
+                "Streamlit Cloud → App settings → Secrets에 OPENAI_API_KEY를 추가하세요."
+            )
+        self.client = OpenAI(api_key=key)
         self.dimension = EMBEDDING_DIMENSION
 
     def embed_texts(self, texts: list[str], batch_size: int = 100) -> np.ndarray:
