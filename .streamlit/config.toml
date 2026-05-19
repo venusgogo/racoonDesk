@@ -1,0 +1,12 @@
+[theme]
+primaryColor       = "#6B4F3A"
+backgroundColor    = "#F7F4F0"
+secondaryBackgroundColor = "#2B2320"
+textColor          = "#1C1C1E"
+font               = "sans serif"
+
+[server]
+maxUploadSize      = 50          # MB — 규정 파일 업로드 한도
+
+[browser]
+gatherUsageStats   = false

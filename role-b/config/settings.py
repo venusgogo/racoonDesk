@@ -35,3 +35,15 @@ MAX_TOKENS = int(os.getenv("MAX_TOKENS", "2048"))
 # FAISS 인덱스 경로
 FAISS_INDEX_PATH = str(VECTOR_STORE_DIR / "hr_regulations.faiss")
 METADATA_PATH = str(VECTOR_STORE_DIR / "hr_regulations_meta.json")
+# API 키 — 환경변수 우선, 없으면 Streamlit secrets fallback
+def _get_secret(key: str) -> str:
+    if val := os.environ.get(key):
+        return val
+    try:
+        import streamlit as st
+        return st.secrets.get(key, "")
+    except Exception:
+        return ""
+
+ANTHROPIC_API_KEY = _get_secret("ANTHROPIC_API_KEY")
+OPENAI_API_KEY    = _get_secret("OPENAI_API_KEY")
