@@ -39,18 +39,19 @@ def render_dashboard():
     # 핵심 지표
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric("총 질의 수", f"{len(recent)}건")
+        st.metric("총 질문 수", f"{len(recent)}건")
     with col2:
         avg_ms = round(sum(r["response_ms"] for r in recent) / len(recent)) if recent else 0
-        st.metric("평균 응답시간", f"{avg_ms}ms")
+        avg_sec = round(avg_ms / 1000, 1)
+        st.metric("평균 답변 시간", f"{avg_sec}초")
     with col3:
         fb_recent = [f for f in feedback if datetime.fromisoformat(f["timestamp"]) > cutoff]
         helpful = sum(1 for f in fb_recent if f.get("helpful"))
         rate = round(helpful / len(fb_recent) * 100) if fb_recent else 0
-        st.metric("긍정 피드백", f"{rate}%")
+        st.metric("만족도", f"{rate}%")
     with col4:
         daily_avg = round(len(recent) / days, 1)
-        st.metric("일평균 질의", f"{daily_avg}건")
+        st.metric("하루 평균 질문", f"{daily_avg}건")
 
     st.divider()
 

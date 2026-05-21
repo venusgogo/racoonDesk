@@ -84,19 +84,19 @@ with st.sidebar:
             _, retriever, _ = get_rag_components()
             loader_tmp = DocumentLoader()
 
-            if st.button("⚙️ 인덱스 구축", type="primary", use_container_width=True):
-                progress = st.progress(0, text="문서 청킹 중...")
+            if st.button("⚙️ 등록하기", type="primary", use_container_width=True):
+                progress = st.progress(0, text="규정 내용 분석 중...")
                 try:
                     chunks = loader_tmp.load(tmp_path)
-                    progress.progress(40, text=f"{len(chunks)}개 청크 생성. 임베딩 중...")
+                    progress.progress(40, text=f"{len(chunks)}개 항목 분석 완료. AI 학습 중...")
                     retriever.build_index(chunks)
-                    progress.progress(80, text="인덱스 저장 중...")
+                    progress.progress(80, text="저장 중...")
                     retriever.save()
                     st.cache_resource.clear()
                     progress.progress(100, text="완료!")
-                    st.success(f"✅ 인덱싱 완료: {len(chunks)}개 청크")
+                    st.success(f"✅ 등록 완료: {len(chunks)}개 항목")
                 except Exception as e:
-                    st.error(f"인덱싱 실패: {e}")
+                    st.error(f"등록 실패: {e}")
                 finally:
                     progress.empty()
 
@@ -104,20 +104,20 @@ with st.sidebar:
         try:
             _, retriever, _ = get_rag_components()
             if retriever.is_ready:
-                st.info(f"📂 인덱스: {retriever.chunk_count}개 청크 로드됨")
+                st.info(f"📂 규정 {retriever.chunk_count}개 항목 준비 완료")
         except Exception:
             pass
 
         st.divider()
         st.markdown("### 검색 설정")
-        top_k      = st.slider("검색할 조항 수 (Top-K)", 1, 10, 5)
-        threshold  = st.slider("유사도 임계값", 0.0, 1.0, 0.3, step=0.05)
-        use_stream = st.toggle("스트리밍 답변", value=True)
+        top_k      = st.slider("최대 참고 조항 수", 1, 10, 5)
+        threshold  = st.slider("검색 정확도", 0.0, 1.0, 0.3, step=0.05)
+        use_stream = st.toggle("답변 실시간 출력", value=True)
     else:
         top_k      = 5
         threshold  = 0.3
         use_stream = False
-        st.warning("RAG 모듈을 불러올 수 없습니다.\nAPI 키와 패키지를 확인하세요.")
+        st.warning("AI 검색 기능을 불러올 수 없습니다.\nAPI 키와 패키지를 확인하세요.")
 
     st.divider()
     st.markdown("### 피드백 현황")
@@ -173,7 +173,7 @@ else:
                 _, retriever, generator = get_rag_components()
 
                 if not retriever.is_ready:
-                    answer = "먼저 사이드바에서 규정 파일을 업로드하고 인덱스를 구축해 주세요."
+                    answer = "먼저 사이드바에서 규정 파일을 업로드하고 등록해 주세요."
                     st.markdown(f'<div class="chat-assistant">{answer}</div>', unsafe_allow_html=True)
 
                 else:
