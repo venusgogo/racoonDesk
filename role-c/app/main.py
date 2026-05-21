@@ -1,6 +1,8 @@
 import sys
 import os
 import time
+import tempfile
+from pathlib import Path
 
 ROLE_C_DIR = os.path.join(os.path.dirname(__file__), "..")
 REPO_ROOT   = os.path.join(os.path.dirname(__file__), "../..")
@@ -13,7 +15,6 @@ from ui.components.feedback_widget import render_feedback_widget, render_feedbac
 from ui.components.metrics_dashboard import render_dashboard, log_query
 from ui.components.onboarding import render_onboarding
 
-# Role B RAG 엔진 연결 (새 클래스 기반 API)
 try:
     sys.path.insert(0, os.path.join(REPO_ROOT, "role-b"))
     from rag.loader import DocumentLoader
@@ -66,7 +67,6 @@ with st.sidebar:
         ["💬 질의응답", "📖 사용 가이드", "📊 사용 현황"],
         label_visibility="collapsed",
     )
-
     st.divider()
 
     if RAG_AVAILABLE:
@@ -76,24 +76,47 @@ with st.sidebar:
             type=["md", "txt", "pdf", "docx"],
         )
         if uploaded:
-            import tempfile, pathlib
-            suffix = pathlib.Path(uploaded.name).suffix
+            suffix = Path(uploaded.name).suffix
             with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
                 tmp.write(uploaded.read())
                 tmp_path = tmp.name
 
             _, retriever, _ = get_rag_components()
-            loader = DocumentLoader()
-            chunks = loader.load(tmp_path)
-            st.info(f"조항 {len(chunks)}개 감지됨")
+            loader_tmp = DocumentLoader()
 
             if st.button("⚙️ 인덱스 구축", type="primary", use_container_width=True):
-                with st.spinner("학습 중..."):
+                progress = st.progress(0, text="문서 청킹 중...")
+                try:
+                    chunks = loader_tmp.load(tmp_path)
+                    progress.progress(40, text=f"{len(chunks)}개 청크 생성. 임베딩 중...")
                     retriever.build_index(chunks)
+                    progress.progress(80, text="인덱스 저장 중...")
                     retriever.save()
                     st.cache_resource.clear()
-                st.success("완료!")
+                    progress.progress(100, text="완료!")
+                    st.success(f"✅ 인덱싱 완료: {len(chunks)}개 청크")
+                except Exception as e:
+                    st.error(f"인덱싱 실패: {e}")
+                finally:
+                    progress.empty()
+
+        # 인덱스 상태 표시
+        try:
+            _, retriever, _ = get_rag_components()
+            if retriever.is_ready:
+                st.info(f"📂 인덱스: {retriever.chunk_count}개 청크 로드됨")
+        except Exception:
+            pass
+
+        st.divider()
+        st.markdown("### 검색 설정")
+        top_k      = st.slider("검색할 조항 수 (Top-K)", 1, 10, 5)
+        threshold  = st.slider("유사도 임계값", 0.0, 1.0, 0.3, step=0.05)
+        use_stream = st.toggle("스트리밍 답변", value=True)
     else:
+        top_k      = 5
+        threshold  = 0.3
+        use_stream = False
         st.warning("RAG 모듈을 불러올 수 없습니다.\nAPI 키와 패키지를 확인하세요.")
 
     st.divider()
@@ -115,7 +138,10 @@ else:
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
-    # ── 입력창 (헤더 바로 아래) ───────────────────────────────
+    # 이번 턴 이전 메시지 스냅샷 (현재 턴 인라인 렌더링 후 중복 방지)
+    previous_messages = list(st.session_state.messages)
+
+    # ── 입력창 ───────────────────────────────────────────────
     with st.form(key="query_form", clear_on_submit=True):
         col_input, col_btn = st.columns([5, 1])
         with col_input:
@@ -127,50 +153,77 @@ else:
         with col_btn:
             submitted = st.form_submit_button("전송 →", use_container_width=True, type="primary")
 
-    # ── 답변 처리 ─────────────────────────────────────────────
+    # ── 현재 턴 처리 및 즉시 렌더링 ─────────────────────────
     if submitted and prompt.strip():
-        st.session_state.messages.append({"role": "user", "content": prompt})
+        st.markdown(
+            f'<div class="chat-user">{prompt}</div>',
+            unsafe_allow_html=True,
+        )
 
-        with st.spinner("규정을 검토하는 중..."):
-            if not RAG_AVAILABLE:
-                answer   = "RAG 모듈이 연결되지 않았습니다. API 키와 패키지를 확인해 주세요."
-                articles = []
-            else:
-                try:
-                    _, retriever, generator = get_rag_components()
+        answer   = ""
+        articles = []
+        results  = []
 
-                    if not retriever.is_ready:
-                        answer   = "먼저 사이드바에서 규정 파일을 업로드하고 인덱스를 구축해 주세요."
-                        articles = []
+        if not RAG_AVAILABLE:
+            answer = "RAG 모듈이 연결되지 않았습니다. API 키와 패키지를 확인해 주세요."
+            st.markdown(f'<div class="chat-assistant">{answer}</div>', unsafe_allow_html=True)
+
+        else:
+            try:
+                _, retriever, generator = get_rag_components()
+
+                if not retriever.is_ready:
+                    answer = "먼저 사이드바에서 규정 파일을 업로드하고 인덱스를 구축해 주세요."
+                    st.markdown(f'<div class="chat-assistant">{answer}</div>', unsafe_allow_html=True)
+
+                else:
+                    t0      = time.time()
+                    results = retriever.search(prompt, top_k=top_k, threshold=threshold)
+
+                    if use_stream:
+                        with st.chat_message("assistant"):
+                            stream   = generator.generate(prompt, results, stream=True)
+                            answer   = st.write_stream(stream)
+                            articles = generator.extract_cited_articles(answer)
+                            if articles:
+                                badges = " ".join(
+                                    f'<span class="article-badge">📌 {a}</span>'
+                                    for a in articles
+                                )
+                                st.markdown(badges, unsafe_allow_html=True)
+                            _render_sources(results)
+                        render_feedback_widget(prompt, answer)
                     else:
-                        t0       = time.time()
-                        results  = retriever.search(prompt)
-                        answer   = generator.generate(prompt, results)
+                        with st.spinner("규정을 검토하는 중..."):
+                            answer   = generator.generate(prompt, results)
                         articles = generator.extract_cited_articles(answer)
-                        log_query(prompt, articles, (time.time() - t0) * 1000)
+                        st.markdown(f'<div class="chat-assistant">{answer}</div>', unsafe_allow_html=True)
+                        if articles:
+                            badges = " ".join(
+                                f'<span class="article-badge">📌 {a}</span>'
+                                for a in articles
+                            )
+                            st.markdown(badges, unsafe_allow_html=True)
+                        _render_sources(results)
+                        render_feedback_widget(prompt, answer)
 
-                        if results:
-                            with st.expander("📄 참조된 조항 원문"):
-                                for r in results:
-                                    article = r.chunk.metadata.get("article", "")
-                                    st.markdown(f"**{article}** (유사도: {r.score:.2f})")
-                                    preview = r.chunk.text[:400]
-                                    st.text(preview + ("..." if len(r.chunk.text) > 400 else ""))
-                                    st.divider()
+                    log_query(prompt, articles, (time.time() - t0) * 1000)
 
-                except Exception as e:
-                    answer   = f"오류가 발생했습니다: {e}"
-                    articles = []
+            except Exception as e:
+                answer = f"오류가 발생했습니다: {e}"
+                st.markdown(f'<div class="chat-assistant">{answer}</div>', unsafe_allow_html=True)
 
+        st.session_state.messages.append({"role": "user", "content": prompt})
         st.session_state.messages.append({
             "role":     "assistant",
             "content":  answer,
             "articles": articles,
             "question": prompt,
+            "results":  results,
         })
 
-    # ── 대화 히스토리 (최신순) ────────────────────────────────
-    for msg in reversed(st.session_state.messages):
+    # ── 이전 대화 히스토리 (최신순) ──────────────────────────
+    for msg in reversed(previous_messages):
         if msg["role"] == "user":
             st.markdown(
                 f'<div class="chat-user">{msg["content"]}</div>',
@@ -187,4 +240,20 @@ else:
                     for a in msg["articles"]
                 )
                 st.markdown(badges, unsafe_allow_html=True)
+            _render_sources(msg.get("results", []))
             render_feedback_widget(msg.get("question", ""), msg["content"])
+
+
+def _render_sources(results: list) -> None:
+    if not results:
+        return
+    with st.expander("📄 참조된 조항 원문"):
+        for r in results:
+            article = r.chunk.metadata.get("article", "")
+            source  = r.chunk.metadata.get("source", "")
+            st.markdown(
+                f"**{article}** &nbsp; `유사도: {r.score:.3f}` &nbsp; `출처: {source}`"
+            )
+            preview = r.chunk.text[:400]
+            st.text(preview + ("..." if len(r.chunk.text) > 400 else ""))
+            st.divider()
