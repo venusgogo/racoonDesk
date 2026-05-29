@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Generator as TypingGenerator
 import anthropic
 
 from config.settings import ANTHROPIC_API_KEY, CLAUDE_MODEL, MAX_TOKENS
@@ -29,6 +29,22 @@ def _build_context(results: list[SearchResult]) -> str:
     return "\n".join(lines)
 
 
+def _build_retrieval_answer(query: str, results: list[SearchResult]) -> str:
+    """
+    API 키 없는 검색 전용 모드: 관련 조항을 보기 좋게 포맷하여 반환합니다.
+    """
+    lines = [f"**📌 '{query}'에 관련된 인사규정 조항입니다.**\n"]
+    lines.append("> ℹ️ ANTHROPIC_API_KEY가 없어 검색 전용 모드로 동작합니다.\n")
+
+    for i, r in enumerate(results, start=1):
+        article = r.chunk.metadata.get("article", "미상")
+        lines.append(f"---\n**{i}. {article}** (유사도: {r.score:.2f})\n")
+        lines.append(r.chunk.text.strip())
+        lines.append("")
+
+    return "\n".join(lines)
+
+
 class Generator:
     def __init__(
         self,
@@ -39,19 +55,30 @@ class Generator:
         self.model = model
         self.max_tokens = max_tokens
         key = api_key or ANTHROPIC_API_KEY
-        if not key:
-            raise EnvironmentError(
-                "ANTHROPIC_API_KEY가 설정되지 않았습니다. "
-                "Streamlit Cloud → App settings → Secrets에 ANTHROPIC_API_KEY를 추가하세요."
-            )
-        self.client = anthropic.Anthropic(api_key=key)
+        self.use_llm = bool(key)
+
+        if self.use_llm:
+            self.client = anthropic.Anthropic(api_key=key)
+        else:
+            self.client = None
 
     def generate(
         self,
         query: str,
         search_results: list[SearchResult],
         stream: bool = False,
-    ) -> str:
+    ):
+        # API 키 없음 → 검색 전용 모드
+        if not self.use_llm:
+            answer = _build_retrieval_answer(query, search_results)
+            if stream:
+                # 스트리밍 인터페이스 호환을 위해 제너레이터로 반환
+                def _fake_stream():
+                    for char in answer:
+                        yield char
+                return _fake_stream()
+            return answer
+
         context = _build_context(search_results)
         user_message = f"{context}\n\n[질문]\n{query}"
 
@@ -86,7 +113,6 @@ class Generator:
         matches = pattern.findall(answer)
         articles: list[str] = []
         for match in matches:
-            # 쉼표로 구분된 복수 조항 분리
             parts = [p.strip() for p in match.split(",")]
             articles.extend(parts)
         return articles
