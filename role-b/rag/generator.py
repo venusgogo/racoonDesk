@@ -17,6 +17,17 @@ SYSTEM_PROMPT = """당신은 회사 인사규정 전문 어시스턴트입니다
 5. 불확실한 내용은 추측하지 말고 규정 내용만 전달하세요."""
 
 
+def _api_error_message(e: Exception) -> str:
+    name = type(e).__name__
+    if "ResourceExhausted" in name:
+        return "⚠️ AI 답변 생성 한도를 초과했습니다. 잠시 후 다시 시도해 주세요. (무료 티어: 분당 10건)"
+    if "NotFound" in name:
+        return "⚠️ AI 모델을 찾을 수 없습니다. 관리자에게 문의하세요."
+    if "InvalidArgument" in name or "PermissionDenied" in name:
+        return "⚠️ API 키가 유효하지 않습니다. Streamlit Cloud Secrets의 GEMINI_API_KEY를 확인하세요."
+    return f"⚠️ 오류가 발생했습니다: {name}"
+
+
 def _build_context(results: list[SearchResult]) -> str:
     if not results:
         return "관련 조항을 찾지 못했습니다."
@@ -76,15 +87,21 @@ class Generator:
         return self._invoke(user_message)
 
     def _invoke(self, user_message: str) -> str:
-        response = self._model.generate_content(user_message)
-        return response.text
+        try:
+            response = self._model.generate_content(user_message)
+            return response.text
+        except Exception as e:
+            return _api_error_message(e)
 
     def _stream(self, user_message: str):
         """스트리밍 제너레이터 (Streamlit st.write_stream 호환)."""
-        response = self._model.generate_content(user_message, stream=True)
-        for chunk in response:
-            if chunk.text:
-                yield chunk.text
+        try:
+            response = self._model.generate_content(user_message, stream=True)
+            for chunk in response:
+                if chunk.text:
+                    yield chunk.text
+        except Exception as e:
+            yield _api_error_message(e)
 
     def extract_cited_articles(self, answer: str) -> list[str]:
         """답변 텍스트에서 '[근거: ...]' 패턴의 조항 번호를 추출합니다."""
