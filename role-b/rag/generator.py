@@ -1,7 +1,8 @@
-from typing import Optional, Generator as TypingGenerator
-import anthropic
+import re
+from typing import Optional
+import google.generativeai as genai
 
-from config.settings import ANTHROPIC_API_KEY, CLAUDE_MODEL, MAX_TOKENS
+from config.settings import GEMINI_API_KEY, GEMINI_MODEL
 from rag.retriever import SearchResult
 
 
@@ -30,11 +31,9 @@ def _build_context(results: list[SearchResult]) -> str:
 
 
 def _build_retrieval_answer(query: str, results: list[SearchResult]) -> str:
-    """
-    API 키 없는 검색 전용 모드: 관련 조항을 보기 좋게 포맷하여 반환합니다.
-    """
+    """API 키 없는 검색 전용 모드: 관련 조항을 보기 좋게 포맷하여 반환합니다."""
     lines = [f"**📌 '{query}'에 관련된 인사규정 조항입니다.**\n"]
-    lines.append("> ℹ️ ANTHROPIC_API_KEY가 없어 검색 전용 모드로 동작합니다.\n")
+    lines.append("> ℹ️ GEMINI_API_KEY가 없어 검색 전용 모드로 동작합니다.\n")
 
     for i, r in enumerate(results, start=1):
         article = r.chunk.metadata.get("article", "미상")
@@ -46,73 +45,51 @@ def _build_retrieval_answer(query: str, results: list[SearchResult]) -> str:
 
 
 class Generator:
-    def __init__(
-        self,
-        model: str = CLAUDE_MODEL,
-        max_tokens: int = MAX_TOKENS,
-        api_key: Optional[str] = None,
-    ):
-        self.model = model
-        self.max_tokens = max_tokens
-        key = api_key or ANTHROPIC_API_KEY
+    def __init__(self, model: str = GEMINI_MODEL, api_key: Optional[str] = None):
+        self.model_name = model
+        key = api_key or GEMINI_API_KEY
         self.use_llm = bool(key)
 
         if self.use_llm:
-            self.client = anthropic.Anthropic(api_key=key)
+            genai.configure(api_key=key)
+            self._model = genai.GenerativeModel(
+                model_name=self.model_name,
+                system_instruction=SYSTEM_PROMPT,
+            )
         else:
-            self.client = None
+            self._model = None
 
-    def generate(
-        self,
-        query: str,
-        search_results: list[SearchResult],
-        stream: bool = False,
-    ):
-        # API 키 없음 → 검색 전용 모드
+    def generate(self, query: str, search_results: list[SearchResult], stream: bool = False):
         if not self.use_llm:
             answer = _build_retrieval_answer(query, search_results)
             if stream:
-                # 스트리밍 인터페이스 호환을 위해 제너레이터로 반환
                 def _fake_stream():
                     for char in answer:
                         yield char
                 return _fake_stream()
             return answer
 
-        context = _build_context(search_results)
-        user_message = f"{context}\n\n[질문]\n{query}"
+        user_message = f"{_build_context(search_results)}\n\n[질문]\n{query}"
 
         if stream:
             return self._stream(user_message)
         return self._invoke(user_message)
 
     def _invoke(self, user_message: str) -> str:
-        response = self.client.messages.create(
-            model=self.model,
-            max_tokens=self.max_tokens,
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": user_message}],
-        )
-        return response.content[0].text
+        response = self._model.generate_content(user_message)
+        return response.text
 
     def _stream(self, user_message: str):
-        """스트리밍 제너레이터를 반환합니다 (Streamlit st.write_stream 호환)."""
-        with self.client.messages.stream(
-            model=self.model,
-            max_tokens=self.max_tokens,
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": user_message}],
-        ) as stream:
-            for text in stream.text_stream:
-                yield text
+        """스트리밍 제너레이터 (Streamlit st.write_stream 호환)."""
+        response = self._model.generate_content(user_message, stream=True)
+        for chunk in response:
+            if chunk.text:
+                yield chunk.text
 
     def extract_cited_articles(self, answer: str) -> list[str]:
         """답변 텍스트에서 '[근거: ...]' 패턴의 조항 번호를 추출합니다."""
-        import re
         pattern = re.compile(r"\[근거:\s*([^\]]+)\]")
-        matches = pattern.findall(answer)
         articles: list[str] = []
-        for match in matches:
-            parts = [p.strip() for p in match.split(",")]
-            articles.extend(parts)
+        for match in pattern.findall(answer):
+            articles.extend(p.strip() for p in match.split(","))
         return articles
