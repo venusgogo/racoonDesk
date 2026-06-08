@@ -22,8 +22,10 @@ try:
     from rag.retriever import Retriever
     from rag.generator import Generator
     RAG_AVAILABLE = True
-except Exception:
+    RAG_ERROR = ""
+except Exception as e:
     RAG_AVAILABLE = False
+    RAG_ERROR = str(e)
 
 # ── 페이지 설정 ──────────────────────────────────────────────
 st.set_page_config(
@@ -117,7 +119,9 @@ with st.sidebar:
         top_k      = 5
         threshold  = 0.3
         use_stream = False
-        st.warning("AI 검색 기능을 불러올 수 없습니다.\nAPI 키와 패키지를 확인하세요.")
+        st.warning("AI 검색 기능을 불러올 수 없습니다.")
+        if RAG_ERROR:
+            st.caption(f"오류: {RAG_ERROR}")
 
     st.divider()
     st.markdown("### 피드백 현황")
@@ -165,7 +169,7 @@ else:
         results  = []
 
         if not RAG_AVAILABLE:
-            answer = "RAG 모듈이 연결되지 않았습니다. API 키와 패키지를 확인해 주세요."
+            answer = "AI 검색 기능을 불러올 수 없습니다. Streamlit Cloud Secrets에 GEMINI_API_KEY가 설정됐는지 확인해 주세요."
             st.markdown(f'<div class="chat-assistant">{answer}</div>', unsafe_allow_html=True)
 
         else:
