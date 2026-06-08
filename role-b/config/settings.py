@@ -41,3 +41,7 @@ VECTOR_STORE_DIR.mkdir(parents=True, exist_ok=True)
 
 FAISS_INDEX_PATH = str(VECTOR_STORE_DIR / "hr_regulations.faiss")
 METADATA_PATH    = str(VECTOR_STORE_DIR / "hr_regulations_meta.json")
+
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(__file__), "../.env"))
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
