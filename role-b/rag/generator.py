@@ -2,7 +2,8 @@ import re
 from typing import Optional
 import google.generativeai as genai
 
-from config.settings import GEMINI_API_KEY, GEMINI_MODEL
+from config.settings import GEMINI_API_KEY
+GEMINI_MODEL = "gemini-3.5-flash"
 from rag.retriever import SearchResult
 
 

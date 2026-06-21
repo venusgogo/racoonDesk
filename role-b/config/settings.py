@@ -1,3 +1,5 @@
+from dotenv import load_dotenv
+load_dotenv()
 import os
 from pathlib import Path
 
@@ -19,7 +21,7 @@ def _get_secret(key: str) -> str:
 GEMINI_API_KEY = _get_secret("GEMINI_API_KEY")
 
 # ── LLM 설정 ──────────────────────────────────────────────────
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
 
 # ── 로컬 임베딩 설정 (API 키 불필요) ──────────────────────────
 # jhgan/ko-sroberta-multitask: 한국어 특화 sentence-transformers 모델
