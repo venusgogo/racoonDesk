@@ -111,14 +111,20 @@ section[data-testid="stSidebar"] * {
 }
 
 /* 파일 업로드 드롭존 내부 (흰 배경) — 확장자 안내 등 글자 블랙 */
-section[data-testid="stSidebar"] div[data-testid="stFileUploaderDropzone"],
-section[data-testid="stSidebar"] div[data-testid="stFileUploaderDropzone"] * {
+section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"],
+section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] *,
+section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzoneInstructions"],
+section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzoneInstructions"] *,
+section[data-testid="stSidebar"] [data-testid="stFileUploader"] small,
+section[data-testid="stSidebar"] [data-testid="stFileUploader"] span {
     color: #1C1C1E !important;
 }
 
 /* 업로드된 파일 카드 (흰 배경) — 파일명/용량 글자 블랙 */
-section[data-testid="stSidebar"] div[data-testid="stFileUploaderFile"],
-section[data-testid="stSidebar"] div[data-testid="stFileUploaderFile"] * {
+section[data-testid="stSidebar"] [data-testid="stFileUploaderFile"],
+section[data-testid="stSidebar"] [data-testid="stFileUploaderFile"] *,
+section[data-testid="stSidebar"] [data-testid="stFileUploaderFileName"],
+section[data-testid="stSidebar"] [data-testid="stFileUploaderFileData"] {
     color: #1C1C1E !important;
 }
 
