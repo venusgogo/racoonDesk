@@ -38,7 +38,7 @@ role-b/
 | UI 프레임워크 | Streamlit |
 | 임베딩 모델 | OpenAI `text-embedding-3-small` 또는 로컬 모델 |
 | 벡터 DB | FAISS (로컬) |
-| LLM | Claude API |
+| LLM | Gemini API |
 | 문서 처리 | LangChain / llamaindex |
 
 ## 설치 및 실행
