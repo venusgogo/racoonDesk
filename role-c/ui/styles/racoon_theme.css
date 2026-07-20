@@ -110,6 +110,18 @@ section[data-testid="stSidebar"] * {
     color: var(--racoon-accent) !important;
 }
 
+/* 파일 업로드 드롭존 내부 (흰 배경) — 확장자 안내 등 글자 블랙 */
+section[data-testid="stSidebar"] div[data-testid="stFileUploaderDropzone"],
+section[data-testid="stSidebar"] div[data-testid="stFileUploaderDropzone"] * {
+    color: #1C1C1E !important;
+}
+
+/* 업로드된 파일 카드 (흰 배경) — 파일명/용량 글자 블랙 */
+section[data-testid="stSidebar"] div[data-testid="stFileUploaderFile"],
+section[data-testid="stSidebar"] div[data-testid="stFileUploaderFile"] * {
+    color: #1C1C1E !important;
+}
+
 /* 메트릭 카드 */
 .metric-card {
     background: var(--racoon-surface);
@@ -180,6 +192,49 @@ div[data-testid="stTextInput"] input::placeholder {
 div[data-testid="stTextInput"] input:focus {
     border-color: var(--racoon-accent) !important;
     box-shadow: 0 0 0 3px rgba(107,79,58,0.15) !important;
+}
+
+/* 텍스트영역 (피드백 의견 입력) — 어두운 배경/글씨 → 흰 배경 + 진한 글씨 */
+div[data-testid="stTextArea"] textarea {
+    background-color: #FFFFFF !important;
+    color: #1C1C1E !important;
+    border: 2px solid var(--racoon-border) !important;
+    border-radius: 10px !important;
+    font-family: 'Noto Sans KR', sans-serif !important;
+    caret-color: var(--racoon-brown) !important;
+}
+
+div[data-testid="stTextArea"] textarea::placeholder {
+    color: #9E9E9E !important;
+}
+
+div[data-testid="stTextArea"] textarea:focus {
+    border-color: var(--racoon-brown) !important;
+    box-shadow: 0 0 0 3px rgba(107,79,58,0.15) !important;
+}
+
+/* 셀렉트박스 (대시보드 기간 선택) — 흰 배경 + 진한 글씨 */
+div[data-baseweb="select"] > div {
+    background-color: #FFFFFF !important;
+    color: #1C1C1E !important;
+    border-color: var(--racoon-border) !important;
+}
+
+div[data-baseweb="select"] * {
+    color: #1C1C1E !important;
+}
+
+ul[data-testid="stSelectboxVirtualDropdown"] li {
+    background-color: #FFFFFF !important;
+    color: #1C1C1E !important;
+}
+
+/* 사이드바 슬라이더 값/눈금 숫자 — 어두운 배경에서 밝게 */
+section[data-testid="stSidebar"] div[data-testid="stSliderThumbValue"],
+section[data-testid="stSidebar"] div[data-testid="stSliderTickBarMin"],
+section[data-testid="stSidebar"] div[data-testid="stSliderTickBarMax"] {
+    color: #F0EAE4 !important;
+    font-weight: 600;
 }
 
 /* form 여백 최소화 */

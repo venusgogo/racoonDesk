@@ -41,6 +41,21 @@ if os.path.exists(css_path):
     with open(css_path, encoding="utf-8") as f:
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
+# ── 참조 조항 원문 표시 ───────────────────────────────────────
+def _render_sources(results: list) -> None:
+    if not results:
+        return
+    with st.expander("📄 참조된 조항 원문"):
+        for r in results:
+            article = r.chunk.metadata.get("article", "")
+            source  = r.chunk.metadata.get("source", "")
+            st.markdown(
+                f"**{article}** &nbsp; `유사도: {r.score:.3f}` &nbsp; `출처: {source}`"
+            )
+            preview = r.chunk.text[:400]
+            st.text(preview + ("..." if len(r.chunk.text) > 400 else ""))
+            st.divider()
+
 # ── RAG 컴포넌트 캐싱 ─────────────────────────────────────────
 @st.cache_resource
 def get_rag_components():
@@ -246,18 +261,3 @@ else:
                 st.markdown(badges, unsafe_allow_html=True)
             _render_sources(msg.get("results", []))
             render_feedback_widget(msg.get("question", ""), msg["content"])
-
-
-def _render_sources(results: list) -> None:
-    if not results:
-        return
-    with st.expander("📄 참조된 조항 원문"):
-        for r in results:
-            article = r.chunk.metadata.get("article", "")
-            source  = r.chunk.metadata.get("source", "")
-            st.markdown(
-                f"**{article}** &nbsp; `유사도: {r.score:.3f}` &nbsp; `출처: {source}`"
-            )
-            preview = r.chunk.text[:400]
-            st.text(preview + ("..." if len(r.chunk.text) > 400 else ""))
-            st.divider()
