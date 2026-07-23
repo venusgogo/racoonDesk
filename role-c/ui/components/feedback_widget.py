@@ -19,9 +19,14 @@ def _save_feedback(records: list):
         json.dump(records, f, ensure_ascii=False, indent=2)
 
 
-def render_feedback_widget(question: str, answer: str):
-    """답변 하단에 인라인 피드백 위젯을 렌더링합니다."""
-    key = f"fb_{hash(question + answer) % 100000}"
+def render_feedback_widget(question: str, answer: str, msg_id=None):
+    """답변 하단에 인라인 피드백 위젯을 렌더링합니다.
+
+    msg_id: 메시지의 고유 식별자(예: session_state.messages 내 인덱스).
+    동일한 질문+답변 조합이 여러 번 나와도 키가 충돌하지 않도록
+    content 해시 대신 우선적으로 사용합니다.
+    """
+    key = f"fb_{msg_id}" if msg_id is not None else f"fb_{hash(question + answer) % 100000}"
 
     if st.session_state.get(f"{key}_submitted"):
         st.caption("✅ 피드백 감사합니다!")

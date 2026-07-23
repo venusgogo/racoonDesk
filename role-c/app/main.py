@@ -174,6 +174,8 @@ else:
 
     # ── 현재 턴 처리 및 즉시 렌더링 ─────────────────────────
     if submitted and prompt.strip():
+        # 현재 턴의 assistant 메시지가 append될 인덱스 (user 다음 자리)
+        current_msg_id = len(previous_messages) + 1
         st.markdown(
             f'<div class="chat-user">{prompt}</div>',
             unsafe_allow_html=True,
@@ -211,7 +213,7 @@ else:
                                 )
                                 st.markdown(badges, unsafe_allow_html=True)
                             _render_sources(results)
-                        render_feedback_widget(prompt, answer)
+                        render_feedback_widget(prompt, answer, msg_id=current_msg_id)
                     else:
                         with st.spinner("규정을 검토하는 중..."):
                             answer   = generator.generate(prompt, results)
@@ -224,7 +226,7 @@ else:
                             )
                             st.markdown(badges, unsafe_allow_html=True)
                         _render_sources(results)
-                        render_feedback_widget(prompt, answer)
+                        render_feedback_widget(prompt, answer, msg_id=current_msg_id)
 
                     log_query(prompt, articles, (time.time() - t0) * 1000)
 
@@ -242,7 +244,8 @@ else:
         })
 
     # ── 이전 대화 히스토리 (최신순) ──────────────────────────
-    for msg in reversed(previous_messages):
+    for i in range(len(previous_messages) - 1, -1, -1):
+        msg = previous_messages[i]
         if msg["role"] == "user":
             st.markdown(
                 f'<div class="chat-user">{msg["content"]}</div>',
@@ -260,4 +263,4 @@ else:
                 )
                 st.markdown(badges, unsafe_allow_html=True)
             _render_sources(msg.get("results", []))
-            render_feedback_widget(msg.get("question", ""), msg["content"])
+            render_feedback_widget(msg.get("question", ""), msg["content"], msg_id=i)
